@@ -1,11 +1,11 @@
-// json-to-excel-converter.js - Twitter JSON 데이터를 엑셀로 변환 (개선 버전)
+// json-to-excel-converter.js - Twitter JSON 데이터를 엑셀로 변환 (수정 버전)
 
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 
 async function convertTwitterJsonToExcel() {
-    console.log('📊 Twitter JSON → Excel 변환기 시작 (v2.0)\n');
+    console.log('📊 Twitter JSON → Excel 변환기 시작 (v2.1)\n');
     
     try {
         // JSON 파일 찾기
