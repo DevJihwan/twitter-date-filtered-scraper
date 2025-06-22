@@ -1,10 +1,13 @@
 {
   "name": "twitter-date-filtered-scraper",
-  "version": "8.1.0",
-  "description": "날짜 필터링 기능이 있는 Twitter 스크래퍼 - 특정 날짜 이후의 트윗만 수집하고 기준 날짜 도달시 자동 중단",
+  "version": "8.2.0",
+  "description": "날짜 필터링 기능이 있는 Twitter 스크래퍼 - 특정 날짜 이후의 트윗만 수집하고 기준 날짜 도달시 자동 중단, Excel 변환 기능 포함",
   "main": "date-filtered-scraper.js",
   "scripts": {
     "start": "node date-filtered-scraper.js",
+    "scrape": "node date-filtered-scraper.js",
+    "convert": "node json-to-excel-converter.js",
+    "excel": "node json-to-excel-converter.js",
     "original": "node original-scraper.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -16,12 +19,17 @@
     "real-time",
     "social-media",
     "data-collection",
-    "auto-stop"
+    "auto-stop",
+    "excel",
+    "xlsx",
+    "korean-time",
+    "data-conversion"
   ],
   "author": "DevJihwan",
   "license": "MIT",
   "dependencies": {
-    "puppeteer": "^21.0.0"
+    "puppeteer": "^21.0.0",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=14.0.0"
