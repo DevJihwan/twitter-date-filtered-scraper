@@ -1,11 +1,11 @@
-// json-to-excel-converter.js - Twitter JSON 데이터를 엑셀로 변환
+// json-to-excel-converter.js - Twitter JSON 데이터를 엑셀로 변환 (개선 버전)
 
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 
 async function convertTwitterJsonToExcel() {
-    console.log('📊 Twitter JSON → Excel 변환기 시작\n');
+    console.log('📊 Twitter JSON → Excel 변환기 시작 (v2.0)\n');
     
     try {
         // JSON 파일 찾기
@@ -45,6 +45,7 @@ async function convertTwitterJsonToExcel() {
         }
         
         console.log(`📊 총 트윗 수: ${jsonData.tweets.length}개`);
+        console.log(`📈 수집 통계: ${jsonData.statistics.totalTweets}개 트윗, ${jsonData.statistics.uniqueUsers}명 사용자`);
         
         // 한국시간 변환 함수
         const convertToKoreanTime = (utcDatetime) => {
@@ -68,15 +69,14 @@ async function convertTwitterJsonToExcel() {
             }
         };
         
-        // 계정명 추출 함수
-        const extractUsername = (uniqueId) => {
+        // 숫자 추출 함수 (좋아요, 리트윗, 답글 수에서 숫자만 추출)
+        const extractNumber = (str) => {
             try {
-                // uniqueId 형식: "username_datetime_content"
-                const parts = uniqueId.split('_');
-                return parts[0] || 'unknown';
+                if (!str) return 0;
+                const match = str.match(/\d+/);
+                return match ? parseInt(match[0]) : 0;
             } catch (error) {
-                console.log(`⚠️ 계정명 추출 실패: ${uniqueId}`);
-                return 'unknown';
+                return 0;
             }
         };
         
@@ -90,17 +90,20 @@ async function convertTwitterJsonToExcel() {
         jsonData.tweets.forEach((tweet, index) => {
             try {
                 const row = {
-                    '계정명': extractUsername(tweet.uniqueId),
+                    '계정명': tweet.username || 'unknown',
+                    '표시명': tweet.displayName || '',
                     '게시일자': convertToKoreanTime(tweet.datetime),
                     '링크': tweet.link || '',
-                    // 추가 정보 (선택사항)
-                    '트윗내용': tweet.text ? tweet.text.substring(0, 100) + (tweet.text.length > 100 ? '...' : '') : '',
+                    '트윗내용': tweet.text ? tweet.text.replace(/\n/g, ' ').substring(0, 200) + (tweet.text.length > 200 ? '...' : '') : '',
                     '해시태그': tweet.hashtags ? tweet.hashtags.join(', ') : '',
-                    '좋아요': tweet.interactions ? tweet.interactions.likes : '',
-                    '리트윗': tweet.interactions ? tweet.interactions.retweets : '',
-                    '답글': tweet.interactions ? tweet.interactions.replies : '',
+                    '좋아요수': extractNumber(tweet.interactions?.likes),
+                    '리트윗수': extractNumber(tweet.interactions?.retweets),
+                    '답글수': extractNumber(tweet.interactions?.replies),
+                    '이미지수': tweet.imageCount || 0,
                     '이미지여부': tweet.hasImages ? 'Y' : 'N',
-                    '비디오여부': tweet.hasVideo ? 'Y' : 'N'
+                    '비디오여부': tweet.hasVideo ? 'Y' : 'N',
+                    '수집단계': tweet.collectionStep || '',
+                    '수집시간': tweet.scrapedAt ? convertToKoreanTime(tweet.scrapedAt) : ''
                 };
                 
                 excelData.push(row);
@@ -127,27 +130,61 @@ async function convertTwitterJsonToExcel() {
         }
         
         // 엑셀 워크북 생성
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
         const workbook = XLSX.utils.book_new();
         
-        // 워크시트 이름 설정
-        const sheetName = 'Twitter데이터';
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        // 1. 트윗 데이터 시트
+        const tweetWorksheet = XLSX.utils.json_to_sheet(excelData);
+        XLSX.utils.book_append_sheet(workbook, tweetWorksheet, 'Twitter데이터');
         
         // 컬럼 너비 자동 조정
         const colWidths = [
             { wch: 15 }, // 계정명
+            { wch: 15 }, // 표시명
             { wch: 20 }, // 게시일자
             { wch: 50 }, // 링크
-            { wch: 30 }, // 트윗내용
-            { wch: 20 }, // 해시태그
-            { wch: 10 }, // 좋아요
-            { wch: 10 }, // 리트윗
-            { wch: 10 }, // 답글
+            { wch: 40 }, // 트윗내용
+            { wch: 30 }, // 해시태그
+            { wch: 8 },  // 좋아요수
+            { wch: 8 },  // 리트윗수
+            { wch: 8 },  // 답글수
+            { wch: 8 },  // 이미지수
             { wch: 10 }, // 이미지여부
-            { wch: 10 }  // 비디오여부
+            { wch: 10 }, // 비디오여부
+            { wch: 15 }, // 수집단계
+            { wch: 20 }  // 수집시간
         ];
-        worksheet['!cols'] = colWidths;
+        tweetWorksheet['!cols'] = colWidths;
+        
+        // 2. 통계 정보 시트
+        const statsData = [
+            { '항목': '총 트윗 수', '값': jsonData.statistics.totalTweets },
+            { '항목': '고유 사용자 수', '값': jsonData.statistics.uniqueUsers },
+            { '항목': '총 해시태그 수', '값': jsonData.statistics.totalHashtags },
+            { '항목': '이미지 포함 트윗', '값': jsonData.statistics.tweetsWithImages },
+            { '항목': '비디오 포함 트윗', '값': jsonData.statistics.tweetsWithVideo },
+            { '항목': '사용된 수집 단계', '값': jsonData.statistics.stepsUsed },
+            { '항목': '수집 기간 (일)', '값': jsonData.statistics.dateRange.totalDays },
+            { '항목': '가장 오래된 날짜', '값': jsonData.statistics.dateRange.oldest },
+            { '항목': '가장 최신 날짜', '값': jsonData.statistics.dateRange.newest },
+            { '항목': '필터 기준 날짜', '값': jsonData.statistics.dateFilter.cutoffDate },
+            { '항목': '수집 완료 시간', '값': convertToKoreanTime(jsonData.statistics.collectedAt) }
+        ];
+        
+        const statsWorksheet = XLSX.utils.json_to_sheet(statsData);
+        XLSX.utils.book_append_sheet(workbook, statsWorksheet, '수집통계');
+        
+        // 3. 인기 해시태그 시트
+        if (jsonData.statistics.topHashtags && jsonData.statistics.topHashtags.length > 0) {
+            const hashtagData = jsonData.statistics.topHashtags.map((item, index) => ({
+                '순위': index + 1,
+                '해시태그': item.hashtag,
+                '사용횟수': item.count,
+                '비율(%)': ((item.count / jsonData.statistics.totalHashtags) * 100).toFixed(1)
+            }));
+            
+            const hashtagWorksheet = XLSX.utils.json_to_sheet(hashtagData);
+            XLSX.utils.book_append_sheet(workbook, hashtagWorksheet, '인기해시태그');
+        }
         
         // 파일명 생성
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
@@ -165,9 +202,9 @@ async function convertTwitterJsonToExcel() {
         
         excelData.slice(0, 3).forEach((row, index) => {
             console.log(`\n${index + 1}번째 트윗:`);
-            console.log(`   계정명: ${row['계정명']}`);
+            console.log(`   계정명: ${row['계정명']} ${row['표시명'] ? `(${row['표시명']})` : ''}`);
             console.log(`   게시일자: ${row['게시일자']}`);
-            console.log(`   링크: ${row['링크']}`);
+            console.log(`   상호작용: 좋아요 ${row['좋아요수']}, 리트윗 ${row['리트윗수']}, 답글 ${row['답글수']}`);
             console.log(`   내용: ${row['트윗내용']}`);
         });
         
@@ -179,6 +216,21 @@ async function convertTwitterJsonToExcel() {
         const uniqueAccounts = new Set(excelData.map(row => row['계정명']));
         console.log(`고유 계정 수: ${uniqueAccounts.size}개`);
         
+        // 가장 활발한 계정 TOP 5
+        const accountCount = {};
+        excelData.forEach(row => {
+            accountCount[row['계정명']] = (accountCount[row['계정명']] || 0) + 1;
+        });
+        
+        const topAccounts = Object.entries(accountCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5);
+        
+        console.log('\n👑 가장 활발한 계정 TOP 5:');
+        topAccounts.forEach(([account, count], index) => {
+            console.log(`   ${index + 1}. ${account}: ${count}개 트윗`);
+        });
+        
         // 날짜별 분포
         const dateCount = {};
         excelData.forEach(row => {
@@ -189,21 +241,51 @@ async function convertTwitterJsonToExcel() {
         console.log('\n📅 날짜별 트윗 수:');
         Object.entries(dateCount)
             .sort(([a], [b]) => b.localeCompare(a)) // 최신순 정렬
-            .slice(0, 7) // 최근 7일만 표시
             .forEach(([date, count]) => {
                 console.log(`   ${date}: ${count}개`);
             });
         
+        // 상호작용 통계
+        const totalLikes = excelData.reduce((sum, row) => sum + (row['좋아요수'] || 0), 0);
+        const totalRetweets = excelData.reduce((sum, row) => sum + (row['리트윗수'] || 0), 0);
+        const totalReplies = excelData.reduce((sum, row) => sum + (row['답글수'] || 0), 0);
+        
+        console.log('\n💝 상호작용 통계:');
+        console.log(`   총 좋아요: ${totalLikes.toLocaleString()}개`);
+        console.log(`   총 리트윗: ${totalRetweets.toLocaleString()}개`);
+        console.log(`   총 답글: ${totalReplies.toLocaleString()}개`);
+        console.log(`   평균 좋아요: ${(totalLikes/excelData.length).toFixed(1)}개/트윗`);
+        
         // 이미지/비디오 통계
         const imageCount = excelData.filter(row => row['이미지여부'] === 'Y').length;
         const videoCount = excelData.filter(row => row['비디오여부'] === 'Y').length;
+        const totalImages = excelData.reduce((sum, row) => sum + (row['이미지수'] || 0), 0);
         
-        console.log(`\n📷 이미지 포함 트윗: ${imageCount}개 (${(imageCount/excelData.length*100).toFixed(1)}%)`);
-        console.log(`🎥 비디오 포함 트윗: ${videoCount}개 (${(videoCount/excelData.length*100).toFixed(1)}%)`);
+        console.log(`\n📷 미디어 통계:`);
+        console.log(`   이미지 포함 트윗: ${imageCount}개 (${(imageCount/excelData.length*100).toFixed(1)}%)`);
+        console.log(`   비디오 포함 트윗: ${videoCount}개 (${(videoCount/excelData.length*100).toFixed(1)}%)`);
+        console.log(`   총 이미지 수: ${totalImages}개`);
+        
+        // 인기 해시태그 표시 (JSON 데이터에서)
+        if (jsonData.statistics.topHashtags && jsonData.statistics.topHashtags.length > 0) {
+            console.log('\n🏆 인기 해시태그 TOP 5:');
+            jsonData.statistics.topHashtags.slice(0, 5).forEach((item, index) => {
+                console.log(`   ${index + 1}. ${item.hashtag}: ${item.count}회`);
+            });
+        }
         
         console.log('\n🎉🎉🎉 Excel 변환 완료! 🎉🎉🎉');
         console.log(`📁 파일 위치: ${path.resolve(excelFileName)}`);
         console.log(`📊 총 ${excelData.length}개 트윗이 변환되었습니다.`);
+        console.log(`📋 생성된 시트: ${workbook.SheetNames.length}개`);
+        console.log(`   - ${workbook.SheetNames.join(', ')}`);
+        
+        console.log('\n📊 Excel 파일에 포함된 정보:');
+        console.log('   ✅ 트윗 데이터 (한국시간 변환)');
+        console.log('   ✅ 수집 통계 정보');
+        if (jsonData.statistics.topHashtags) console.log('   ✅ 인기 해시태그 순위');
+        console.log('   ✅ 상호작용 수 (숫자 형태)');
+        console.log('   ✅ 미디어 정보 (이미지/비디오)');
         
     } catch (error) {
         console.error('❌ 오류 발생:', error.message);
