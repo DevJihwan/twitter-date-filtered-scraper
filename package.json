@@ -1,7 +1,7 @@
 {
   "name": "twitter-date-filtered-scraper",
-  "version": "8.2.0",
-  "description": "날짜 필터링 기능이 있는 Twitter 스크래퍼 - 특정 날짜 이후의 트윗만 수집하고 기준 날짜 도달시 자동 중단, Excel 변환 기능 포함",
+  "version": "8.3.0",
+  "description": "날짜 필터링 Twitter 스크래퍼 + 고급 Excel 변환기 - 한국시간 변환, 다중 시트, 상세 통계 포함",
   "main": "date-filtered-scraper.js",
   "scripts": {
     "start": "node date-filtered-scraper.js",
@@ -9,6 +9,7 @@
     "convert": "node json-to-excel-converter.js",
     "excel": "node json-to-excel-converter.js",
     "original": "node original-scraper.js",
+    "all": "npm run scrape && npm run excel",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -23,7 +24,10 @@
     "excel",
     "xlsx",
     "korean-time",
-    "data-conversion"
+    "data-conversion",
+    "statistics",
+    "hashtag-analysis",
+    "multi-sheet"
   ],
   "author": "DevJihwan",
   "license": "MIT",
