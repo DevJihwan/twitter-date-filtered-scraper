@@ -1,0 +1,37 @@
+{
+  "name": "twitter-date-filtered-scraper",
+  "version": "8.1.0",
+  "description": "날짜 필터링 기능이 있는 Twitter 스크래퍼 - 특정 날짜 이후의 트윗만 수집하고 기준 날짜 도달시 자동 중단",
+  "main": "date-filtered-scraper.js",
+  "scripts": {
+    "start": "node date-filtered-scraper.js",
+    "original": "node original-scraper.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "twitter",
+    "scraper",
+    "puppeteer",
+    "date-filter",
+    "real-time",
+    "social-media",
+    "data-collection",
+    "auto-stop"
+  ],
+  "author": "DevJihwan",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DevJihwan/twitter-date-filtered-scraper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DevJihwan/twitter-date-filtered-scraper/issues"
+  },
+  "homepage": "https://github.com/DevJihwan/twitter-date-filtered-scraper#readme"
+}
