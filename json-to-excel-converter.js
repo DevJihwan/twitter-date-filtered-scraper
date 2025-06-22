@@ -1,11 +1,11 @@
-// json-to-excel-converter.js - Twitter JSON 데이터를 엑셀로 변환 (수정 버전)
+// json-to-excel-converter.js - Twitter JSON 데이터를 엑셀로 변환 (한국시간 수정 버전)
 
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 
 async function convertTwitterJsonToExcel() {
-    console.log('📊 Twitter JSON → Excel 변환기 시작 (v2.1)\n');
+    console.log('📊 Twitter JSON → Excel 변환기 시작 (v2.2 - 한국시간 수정)\n');
     
     try {
         // JSON 파일 찾기
@@ -47,25 +47,54 @@ async function convertTwitterJsonToExcel() {
         console.log(`📊 총 트윗 수: ${jsonData.tweets.length}개`);
         console.log(`📈 수집 통계: ${jsonData.statistics.totalTweets}개 트윗, ${jsonData.statistics.uniqueUsers}명 사용자`);
         
-        // 한국시간 변환 함수
+        // 한국시간 변환 함수 (개선 버전)
         const convertToKoreanTime = (utcDatetime) => {
             try {
+                if (!utcDatetime) return '';
+                
+                // UTC 시간을 Date 객체로 변환
                 const utcDate = new Date(utcDatetime);
-                // 한국시간은 UTC+9
-                const koreanDate = new Date(utcDate.getTime() + (9 * 60 * 60 * 1000));
                 
-                // YYYY-MM-DD HH:mm:ss 형식으로 변환
-                const year = koreanDate.getFullYear();
-                const month = String(koreanDate.getMonth() + 1).padStart(2, '0');
-                const day = String(koreanDate.getDate()).padStart(2, '0');
-                const hours = String(koreanDate.getHours()).padStart(2, '0');
-                const minutes = String(koreanDate.getMinutes()).padStart(2, '0');
-                const seconds = String(koreanDate.getSeconds()).padStart(2, '0');
+                // 한국 시간대로 변환 (UTC+9) - toLocaleString 사용
+                const koreanTime = utcDate.toLocaleString('ko-KR', {
+                    timeZone: 'Asia/Seoul',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
                 
-                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                // 형식을 YYYY-MM-DD HH:mm:ss로 변환
+                const formatted = koreanTime.replace(/\./g, '-').replace(', ', ' ');
+                
+                console.log(`🕐 시간 변환: ${utcDatetime} → ${formatted}`);
+                return formatted;
+                
             } catch (error) {
-                console.log(`⚠️ 날짜 변환 실패: ${utcDatetime}`);
-                return utcDatetime; // 변환 실패시 원본 반환
+                console.log(`⚠️ 날짜 변환 실패: ${utcDatetime}, 오류: ${error.message}`);
+                
+                // 백업 방법: 수동으로 9시간 더하기
+                try {
+                    const utcDate = new Date(utcDatetime);
+                    const koreanDate = new Date(utcDate.getTime() + (9 * 60 * 60 * 1000));
+                    
+                    const year = koreanDate.getUTCFullYear();
+                    const month = String(koreanDate.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(koreanDate.getUTCDate()).padStart(2, '0');
+                    const hours = String(koreanDate.getUTCHours()).padStart(2, '0');
+                    const minutes = String(koreanDate.getUTCMinutes()).padStart(2, '0');
+                    const seconds = String(koreanDate.getUTCSeconds()).padStart(2, '0');
+                    
+                    const backup = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                    console.log(`🔄 백업 변환: ${utcDatetime} → ${backup}`);
+                    return backup;
+                } catch (backupError) {
+                    console.log(`❌ 백업 변환도 실패: ${backupError.message}`);
+                    return utcDatetime; // 변환 실패시 원본 반환
+                }
             }
         };
         
@@ -89,6 +118,15 @@ async function convertTwitterJsonToExcel() {
         
         jsonData.tweets.forEach((tweet, index) => {
             try {
+                // 첫 번째 트윗에서 시간 변환 예시 보여주기
+                if (index === 0) {
+                    console.log('\n📝 첫 번째 트윗 시간 변환 예시:');
+                    console.log(`   원본 UTC: ${tweet.datetime}`);
+                    const converted = convertToKoreanTime(tweet.datetime);
+                    console.log(`   한국시간: ${converted}`);
+                    console.log('');
+                }
+                
                 const row = {
                     '계정명': tweet.username || 'unknown',
                     '표시명': tweet.displayName || '',
@@ -273,6 +311,13 @@ async function convertTwitterJsonToExcel() {
                 console.log(`   ${index + 1}. ${item.hashtag}: ${item.count}회`);
             });
         }
+        
+        console.log('\n⏰ 시간 변환 검증:');
+        console.log('==================');
+        console.log('UTC → 한국시간 변환이 정확한지 확인해주세요:');
+        console.log('• UTC+9 = 한국시간');
+        console.log('• 예: UTC 13:17 → 한국시간 22:17');
+        console.log('• 위의 변환 로그를 확인해보세요!');
         
         console.log('\n🎉🎉🎉 Excel 변환 완료! 🎉🎉🎉');
         console.log(`📁 파일 위치: ${path.resolve(excelFileName)}`);
